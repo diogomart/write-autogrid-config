@@ -7,13 +7,15 @@ import subprocess
 import argparse
 
 supported_atypes = ['HD', 'C', 'A', 'N', 'NA', 'OA', 'F', 'P', 'SA', 'S',
-                    'Cl', 'Br', 'I', 'Mg', 'Ca', 'Mn', 'Fe', 'Zn', 'H', 'OC']
+                    'Cl', 'Br', 'I', 'Mg', 'Ca', 'Mn', 'Fe', 'Zn',
+                    "Si", "B"]
 
-gpf = """npts NPTS_X NPTS_Y NPTS_Z
+gpf = """parameter_file boron_silicon_atompar.dat
+npts NPTS_X NPTS_Y NPTS_Z
 gridfld PREFIX.maps.fld
 spacing 0.375
 receptor_types RECTYPES
-ligand_types HD C A N NA OA F P SA S Cl Br I H
+ligand_types HD C A N NA OA F P SA S Cl Br I Si B
 receptor REC
 gridcenter CENTER_X CENTER_Y CENTER_Z
 smooth 0.5
@@ -30,7 +32,8 @@ map         PREFIX.S.map
 map         PREFIX.Cl.map
 map         PREFIX.Br.map
 map         PREFIX.I.map
-map         PREFIX.H.map
+map         PREFIX.Si.map
+map         PREFIX.B.map
 elecmap     PREFIX.e.map
 dsolvmap    PREFIX.d.map
 dielectric -0.1465
@@ -113,12 +116,13 @@ def get_args():
         sys.stderr.write('Use either --box or --lig\n')
         sys.exit(2)
     args.gpf = args.mapprefix + '.gpf'
+    args.glg = args.mapprefix + '.glg'
     return args
 
 args = get_args()
 
 if os.path.exists(args.gpf):
-    sys.stderr.write('Aborting! %s already exists.\n' % args.gpf)    
+    print('Aborting! %s already exists.' % args.gpf, file=sys.stderr)
 
 rectypes = getrectypes(args.rec)
 if args.box:
@@ -138,3 +142,15 @@ gpf = gpf.replace('CENTER_Z',   '%.3f' % center_z)
 
 with open(args.gpf, 'w') as f:
     f.write(gpf)
+
+b_si_fn = "boron_silicon_atompar.dat"
+boron_silicon_atompar  = "atom_par Si     4.10  0.200  35.8235  -0.00143  0.0  0.0  0  -1  -1  6" + os.linesep
+boron_silicon_atompar += "atom_par B      3.84  0.155  29.6478  -0.00152  0.0  0.0  0  -1  -1  0" + os.linesep
+
+if not os.path.exists(b_si_fn):
+    with open(b_si_fn, "w") as f:
+        f.write(boron_silicon_atompar)
+
+print("Running autogrid4...")
+
+os.system('autogrid4 -p %s -l %s' % (args.gpf, args.glg))
